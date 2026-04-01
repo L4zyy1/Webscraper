@@ -1,4 +1,4 @@
-# Webscraper tool with a proxy switcher in case we would be spamming a cloudflare protected server or whatever
+# Tool for scraping web using keywords
 Usage:
 
 1.Simply add a proxy list or use the one the tool provides
