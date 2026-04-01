@@ -1,5 +1,6 @@
 # Webscraper tool with a proxy switcher in case we would be spamming a cloudflare protected server or whatever
 Usage:
+
 1.Simply add a proxy list or use the one the tool provides
 
 2.Then you type your keywords and press +add
