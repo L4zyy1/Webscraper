@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;800&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0c0f; --surface: #111318; --surface2: #181c23; --border: #1e2530;
+    --accent: #00e5ff; --accent2: #ff6b35; --accent3: #a8ff3e;
+    --text: #c8d4e0; --muted: #4a5568; --danger: #ff4444; --warn: #ffcc00;
+  }
+  body { font-family: 'JetBrains Mono', monospace; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+  body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,255,.012) 2px,rgba(0,229,255,.012) 4px); pointer-events:none; z-index:9999; }
+
+  .app { max-width:1160px; margin:0 auto; padding:24px 20px; display:flex; flex-direction:column; gap:18px; }
+
+  /* HEADER */
+  .header { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:14px; }
+  .logo { display:flex; align-items:center; gap:12px; }
+  .logo-icon { width:34px; height:34px; background:var(--accent); clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); animation:pulse-hex 3s ease-in-out infinite; }
+  @keyframes pulse-hex { 0%,100%{box-shadow:0 0 0 0 rgba(0,229,255,.4)} 50%{box-shadow:0 0 20px 8px rgba(0,229,255,.1)} }
+  .logo-text { font-family:'Syne',sans-serif; font-weight:800; font-size:21px; letter-spacing:-.5px; color:#fff; }
+  .logo-text span { color:var(--accent); }
+  .header-right { display:flex; align-items:center; gap:16px; }
+  .status-dot { display:flex; align-items:center; gap:8px; font-size:10px; color:var(--muted); letter-spacing:.5px; }
+  .dot { width:7px; height:7px; border-radius:50%; animation:blink 2s ease-in-out infinite; }
+  .dot.green { background:var(--accent3); }
+  .dot.orange { background:var(--warn); }
+  .dot.red { background:var(--danger); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* LAYOUT */
+  .two-col { display:grid; grid-template-columns:1fr 340px; gap:18px; align-items:start; }
+  @media(max-width:780px) { .two-col { grid-template-columns:1fr; } }
+
+  .section-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:9px; }
+
+  /* PANELS */
+  .panel { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px; }
+
+  /* PROXY PANEL */
+  .proxy-panel { display:flex; flex-direction:column; gap:12px; }
+
+  .proxy-active-display {
+    background:var(--surface2); border:1px solid var(--border); border-radius:5px; padding:12px;
+    position:relative; overflow:hidden;
+  }
+  .proxy-active-display::before { content:''; position:absolute; left:0;top:0;bottom:0;width:3px; background:var(--accent3); }
+  .pad { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .pad-label { font-size:10px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+  .pad-badge { font-size:10px; padding:2px 8px; border-radius:3px; font-weight:700; }
+  .badge-active { background:rgba(168,255,62,.1); border:1px solid rgba(168,255,62,.3); color:var(--accent3); }
+  .badge-off { background:rgba(100,100,100,.15); border:1px solid rgba(100,100,100,.3); color:var(--muted); }
+  .proxy-ip { font-size:13px; color:#fff; font-weight:600; letter-spacing:.5px; }
+  .proxy-meta { font-size:10px; color:var(--muted); margin-top:3px; }
+
+  .proxy-list { display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; }
+  .proxy-list::-webkit-scrollbar { width:4px; }
+  .proxy-list::-webkit-scrollbar-track { background:var(--surface2); }
+  .proxy-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .proxy-item {
+    display:flex; align-items:center; gap:8px; background:var(--surface2); border:1px solid var(--border);
+    border-radius:4px; padding:8px 10px; cursor:pointer; transition:border-color .15s; position:relative;
+  }
+  .proxy-item:hover { border-color:var(--muted); }
+  .proxy-item.selected { border-color:var(--accent); background:rgba(0,229,255,.04); }
+  .proxy-item.rotating { border-color:var(--warn); background:rgba(255,204,0,.04); }
+  .proxy-status { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .ps-ok { background:var(--accent3); box-shadow:0 0 4px var(--accent3); }
+  .ps-warn { background:var(--warn); }
+  .ps-off { background:var(--muted); }
+  .proxy-addr { font-size:11px; color:var(--text); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .proxy-type { font-size:10px; color:var(--muted); }
+  .proxy-ping { font-size:10px; color:var(--accent3); margin-left:auto; flex-shrink:0; }
+  .proxy-del { background:none; border:none; color:var(--muted); font-size:14px; cursor:pointer; padding:0 2px; flex-shrink:0; transition:color .15s; }
+  .proxy-del:hover { color:var(--danger); }
+
+  .proxy-add-row { display:flex; gap:6px; }
+  .proxy-add-row input { flex:1; }
+  .proxy-type-sel { width:90px; }
+
+  .rotation-controls { display:flex; flex-direction:column; gap:8px; }
+  .rot-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .rot-label { font-size:11px; color:var(--muted); }
+  .rot-val { font-size:11px; color:var(--accent); font-weight:700; min-width:40px; text-align:right; }
+
+  input[type="range"] {
+    flex:1; appearance:none; height:3px; background:var(--border); border-radius:2px; outline:none; cursor:pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb { appearance:none; width:12px; height:12px; border-radius:50%; background:var(--accent); cursor:pointer; }
+
+  .toggle-switch { position:relative; display:inline-block; width:36px; height:20px; }
+  .toggle-switch input { opacity:0; width:0; height:0; }
+  .slider-sw { position:absolute; cursor:pointer; inset:0; background:var(--border); border-radius:20px; transition:.2s; }
+  .slider-sw::before { content:''; position:absolute; height:14px; width:14px; left:3px; bottom:3px; background:var(--muted); border-radius:50%; transition:.2s; }
+  .toggle-switch input:checked + .slider-sw { background:rgba(0,229,255,.2); border:1px solid var(--accent); }
+  .toggle-switch input:checked + .slider-sw::before { transform:translateX(16px); background:var(--accent); }
+
+  .btn-row { display:flex; gap:8px; }
+  .btn { background:none; border:1px solid; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.5px; cursor:pointer; padding:7px 14px; transition:all .15s; text-transform:uppercase; }
+  .btn-accent { border-color:var(--accent); color:var(--accent); }
+  .btn-accent:hover { background:var(--accent); color:var(--bg); }
+  .btn-warn { border-color:var(--warn); color:var(--warn); }
+  .btn-warn:hover { background:var(--warn); color:var(--bg); }
+  .btn-muted { border-color:var(--border); color:var(--muted); }
+  .btn-muted:hover { border-color:var(--muted); color:var(--text); }
+  .btn-green { border-color:var(--accent3); color:var(--accent3); }
+  .btn-green:hover { background:var(--accent3); color:var(--bg); }
+  .btn-danger { border-color:var(--danger); color:var(--danger); }
+  .btn-danger:hover { background:var(--danger); color:#fff; }
+
+  /* LEFT COLUMN */
+  .left-col { display:flex; flex-direction:column; gap:18px; }
+
+  .keyword-tags { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; min-height:36px; }
+  .tag { display:flex; align-items:center; gap:6px; background:rgba(0,229,255,.08); border:1px solid rgba(0,229,255,.25); color:var(--accent); border-radius:4px; padding:4px 10px; font-size:12px; font-weight:600; animation:tag-in .2s ease; }
+  @keyframes tag-in { from{opacity:0;transform:scale(.85)} to{opacity:1;transform:scale(1)} }
+  .tag-remove { cursor:pointer; color:var(--muted); font-size:14px; line-height:1; background:none; border:none; padding:0; transition:color .15s; }
+  .tag-remove:hover { color:var(--danger); }
+  .keyword-input-row { display:flex; gap:8px; }
+  .btn-add { border-color:var(--accent); color:var(--accent); font-size:12px; }
+  .btn-add:hover { background:var(--accent); color:var(--bg); }
+
+  input[type="text"], select {
+    background:var(--surface2); border:1px solid var(--border); border-radius:4px;
+    color:#fff; font-family:'JetBrains Mono',monospace; font-size:12px;
+    padding:8px 12px; outline:none; transition:border-color .2s;
+  }
+  input[type="text"]:focus, select:focus { border-color:var(--accent); }
+  input[type="text"]::placeholder { color:var(--muted); }
+
+  .options-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .toggle-group { display:flex; border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+  .toggle-btn { background:var(--surface); border:none; border-right:1px solid var(--border); color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:10px; padding:7px 12px; cursor:pointer; transition:all .15s; }
+  .toggle-btn:last-child { border-right:none; }
+  .toggle-btn.active { background:rgba(0,229,255,.12); color:var(--accent); }
+
+  .search-bar { display:flex; gap:10px; }
+  .query-input-wrap { position:relative; flex:1; }
+  .query-prefix { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--accent); font-size:13px; pointer-events:none; }
+  #queryInput { padding-left:32px; font-size:13px; padding-top:10px; padding-bottom:10px; width:100%; }
+  .btn-search { background:var(--accent); border-color:var(--accent); color:var(--bg); padding:10px 24px; font-size:12px; flex-shrink:0; }
+  .btn-search:hover:not(:disabled) { background:#00b8d4; border-color:#00b8d4; }
+  .btn-search:disabled { opacity:.5; cursor:not-allowed; }
+
+  .progress-bar { height:2px; background:var(--border); border-radius:2px; overflow:hidden; display:none; }
+  .progress-bar.active { display:block; }
+  .progress-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent3)); width:0%; transition:width .4s ease; }
+
+  .log-area { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px 14px; font-size:11px; color:var(--muted); max-height:90px; overflow-y:auto; display:none; flex-direction:column; gap:3px; }
+  .log-area.visible { display:flex; }
+  .log-line { display:flex; gap:10px; }
+  .log-time { color:var(--accent); opacity:.6; flex-shrink:0; }
+  .log-ok { color:var(--accent3); }
+  .log-warn { color:var(--warn); }
+  .log-err { color:var(--danger); }
+
+  .results-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .results-count span { color:var(--accent3); font-weight:700; }
+  .results-grid { display:flex; flex-direction:column; gap:10px; }
+  .result-card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:15px 15px 15px 18px; position:relative; overflow:hidden; animation:card-in .3s ease both; transition:border-color .2s; }
+  .result-card:hover { border-color:var(--muted); }
+  .result-card::before { content:''; position:absolute; left:0;top:0;bottom:0;width:3px; background:var(--accent); }
+  @keyframes card-in { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
+  .card-title { font-family:'Syne',sans-serif; font-weight:600; font-size:14px; color:#fff; margin-bottom:4px; }
+  .card-url { font-size:10px; color:var(--accent); margin-bottom:7px; opacity:.8; word-break:break-all; }
+  .card-snippet { font-size:11px; color:var(--text); line-height:1.6; opacity:.85; }
+  .card-meta { display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; }
+  .meta-badge { font-size:10px; padding:2px 7px; border-radius:3px; background:rgba(168,255,62,.08); border:1px solid rgba(168,255,62,.2); color:var(--accent3); }
+  .meta-badge.proxy-badge { background:rgba(255,107,53,.08); border-color:rgba(255,107,53,.25); color:var(--accent2); }
+  .highlight { background:rgba(0,229,255,.15); color:var(--accent); border-radius:2px; padding:0 2px; }
+
+  .empty-state { text-align:center; padding:50px 20px; color:var(--muted); }
+  .empty-icon { font-size:36px; margin-bottom:14px; opacity:.3; }
+  .empty-label { font-size:11px; letter-spacing:1px; text-transform:uppercase; }
+
+  /* PROXY STATS BAR */
+  .proxy-stats { display:flex; gap:0; border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+  .stat-cell { flex:1; padding:8px 10px; text-align:center; border-right:1px solid var(--border); background:var(--surface2); }
+  .stat-cell:last-child { border-right:none; }
+  .stat-num { font-size:16px; font-weight:700; color:#fff; }
+  .stat-lbl { font-size:9px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; margin-top:2px; }
+
+  .divider { height:1px; background:var(--border); }
+
+  /* Rotation timer ring */
+  .timer-ring-wrap { display:flex; align-items:center; gap:10px; }
+  .ring-container { position:relative; width:36px; height:36px; flex-shrink:0; }
+  .ring-svg { width:36px; height:36px; transform:rotate(-90deg); }
+  .ring-bg { fill:none; stroke:var(--border); stroke-width:3; }
+  .ring-fill { fill:none; stroke:var(--warn); stroke-width:3; stroke-linecap:round; stroke-dasharray:100; stroke-dashoffset:100; transition:stroke-dashoffset .3s; }
+  .ring-label { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--warn); font-weight:700; }
+  .ring-info { font-size:11px; color:var(--muted); }
+  .ring-info strong { color:var(--warn); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <div class="logo-text">Data<span>Miner</span> <span style="font-size:13px;font-weight:400;color:var(--muted)">+ Proxy</span></div>
+    </div>
+    <div class="header-right">
+      <div class="status-dot" id="headerStatus">
+        <div class="dot green" id="headerDot"></div>
+        <span id="headerStatusText">DIRECT</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TWO COLUMN -->
+  <div class="two-col">
+
+    <!-- LEFT: SCRAPER -->
+    <div class="left-col">
+
+      <!-- KEYWORDS -->
+      <div>
+        <div class="section-label">// Keyword Filters</div>
+        <div class="panel">
+          <div class="keyword-tags" id="tagContainer">
+            <div style="color:var(--muted);font-size:11px;align-self:center">No keywords added yet...</div>
+          </div>
+          <div class="keyword-input-row">
+            <input type="text" id="keywordInput" placeholder="Add keyword (e.g. AI, climate, crypto...)" autocomplete="off" />
+            <button class="btn btn-add" onclick="addKeyword()">+ Add</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPTIONS -->
+      <div>
+        <div class="section-label">// Search Options</div>
+        <div class="panel">
+          <div class="options-row">
+            <select id="resultCount">
+              <option value="5">5 results</option>
+              <option value="10" selected>10 results</option>
+              <option value="15">15 results</option>
+              <option value="20">20 results</option>
+            </select>
+            <select id="searchMode">
+              <option value="AND">ALL keywords (AND)</option>
+              <option value="OR">ANY keyword (OR)</option>
+            </select>
+            <div class="toggle-group" id="formatToggle">
+              <button class="toggle-btn active" data-val="summary" onclick="setFormat(this)">Summary</button>
+              <button class="toggle-btn" data-val="detailed" onclick="setFormat(this)">Detailed</button>
+              <button class="toggle-btn" data-val="bullets" onclick="setFormat(this)">Bullets</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEARCH -->
+      <div>
+        <div class="section-label">// Query</div>
+        <div class="search-bar">
+          <div class="query-input-wrap">
+            <span class="query-prefix">›</span>
+            <input type="text" id="queryInput" placeholder="Enter your main search query..." autocomplete="off" />
+          </div>
+          <button class="btn btn-search" id="searchBtn" onclick="runSearch()">⌕ Search</button>
+        </div>
+      </div>
+
+      <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="log-area" id="logArea"></div>
+
+      <!-- RESULTS -->
+      <div id="resultsSection" style="display:none">
+        <div class="results-header">
+          <div>
+            <div class="section-label">// Results</div>
+            <div class="results-count" id="resultsCount" style="font-size:11px;color:var(--muted)"></div>
+          </div>
+          <button class="btn btn-green" onclick="exportResults()">↓ Export JSON</button>
+        </div>
+        <div class="results-grid" id="resultsGrid"></div>
+      </div>
+
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">⬡</div>
+        <div class="empty-label">Add keywords and enter a query to begin scraping</div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: PROXY PANEL -->
+    <div>
+      <div class="section-label">// Proxy Switcher</div>
+      <div class="panel proxy-panel">
+
+        <!-- ACTIVE PROXY DISPLAY -->
+        <div class="proxy-active-display">
+          <div class="pad">
+            <div class="pad-label">Active Proxy</div>
+            <div class="pad-badge" id="activeBadge">OFF</div>
+          </div>
+          <div class="proxy-ip" id="activeIp">No proxy selected</div>
+          <div class="proxy-meta" id="activeMeta">Direct connection in use</div>
+        </div>
+
+        <!-- STATS -->
+        <div class="proxy-stats">
+          <div class="stat-cell"><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Proxies</div></div>
+          <div class="stat-cell"><div class="stat-num" id="statActive" style="color:var(--accent3)">0</div><div class="stat-lbl">Online</div></div>
+          <div class="stat-cell"><div class="stat-num" id="statRotations" style="color:var(--warn)">0</div><div class="stat-lbl">Rotations</div></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- PROXY LIST -->
+        <div>
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Proxy Pool</div>
+          <div class="proxy-list" id="proxyList">
+            <div style="text-align:center;padding:18px;color:var(--muted);font-size:11px">No proxies added yet</div>
+          </div>
+        </div>
+
+        <!-- ADD PROXY -->
+        <div>
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Add Proxy</div>
+          <div class="proxy-add-row" style="margin-bottom:6px">
+            <input type="text" id="proxyInput" placeholder="IP:Port or host:port" autocomplete="off" style="flex:1" />
+            <select id="proxyType" style="width:85px">
+              <option value="HTTP">HTTP</option>
+              <option value="HTTPS">HTTPS</option>
+              <option value="SOCKS5">SOCKS5</option>
+              <option value="SOCKS4">SOCKS4</option>
+            </select>
+          </div>
+          <div class="proxy-add-row">
+            <input type="text" id="proxyLabel" placeholder="Label (optional)" autocomplete="off" style="flex:1" />
+            <button class="btn btn-accent" onclick="addProxy()" style="flex-shrink:0">+ Add</button>
+          </div>
+        </div>
+
+        <!-- QUICK ADD SAMPLE -->
+        <button class="btn btn-muted" style="font-size:10px;width:100%" onclick="addSampleProxies()">⊕ Load Sample Proxies</button>
+
+        <div class="divider"></div>
+
+        <!-- AUTO-ROTATION -->
+        <div class="rotation-controls">
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Auto-Rotation</div>
+
+          <div class="rot-row">
+            <span class="rot-label">Enable rotation</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="rotateToggle" onchange="toggleRotation()" />
+              <span class="slider-sw"></span>
+            </label>
+          </div>
+
+          <div class="rot-row">
+            <span class="rot-label">Interval (sec)</span>
+            <span class="rot-val" id="intervalVal">30s</span>
+          </div>
+          <input type="range" id="intervalSlider" min="5" max="120" value="30" step="5" oninput="updateInterval(this.value)" />
+
+          <div class="rot-row">
+            <span class="rot-label">Request delay (ms)</span>
+            <span class="rot-val" id="delayVal">500ms</span>
+          </div>
+          <input type="range" id="delaySlider" min="0" max="5000" value="500" step="100" oninput="updateDelay(this.value)" />
+
+          <div class="rot-row">
+            <span class="rot-label">Rotation mode</span>
+            <select id="rotMode" style="font-size:10px;padding:4px 8px">
+              <option value="sequential">Sequential</option>
+              <option value="random">Random</option>
+              <option value="leastused">Least Used</option>
+            </select>
+          </div>
+
+          <!-- TIMER RING -->
+          <div class="timer-ring-wrap" id="timerRingWrap" style="display:none">
+            <div class="ring-container">
+              <svg class="ring-svg" viewBox="0 0 36 36">
+                <circle class="ring-bg" cx="18" cy="18" r="15.9"/>
+                <circle class="ring-fill" id="ringFill" cx="18" cy="18" r="15.9"/>
+              </svg>
+              <div class="ring-label" id="ringLabel">--</div>
+            </div>
+            <div class="ring-info">Next rotation in <strong id="nextRotSec">--</strong>s</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="btn-row">
+          <button class="btn btn-muted" style="flex:1;font-size:10px" onclick="testAllProxies()">⟳ Test All</button>
+          <button class="btn btn-danger" style="flex:1;font-size:10px" onclick="clearProxies()">✕ Clear All</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────
+let keywords = [];
+let format = 'summary';
+let scraperResults = [];
+let proxies = [];
+let activeProxyIndex = -1; // -1 = direct
+let rotationTimer = null;
+let rotationCount = 0;
+let rotationInterval = 30;
+let requestDelay = 500;
+let nextRotCountdown = 0;
+let countdownTimer = null;
+let useProxy = false;
+
+// ─── KEYWORDS ─────────────────────────────────────────────────────
+function addKeyword() {
+  const input = document.getElementById('keywordInput');
+  const val = input.value.trim();
+  if (!val || keywords.includes(val.toLowerCase())) { input.value=''; return; }
+  keywords.push(val.toLowerCase());
+  renderTags();
+  input.value = '';
+  input.focus();
+}
+
+document.getElementById('keywordInput').addEventListener('keydown', e => { if(e.key==='Enter') addKeyword(); });
+document.getElementById('queryInput').addEventListener('keydown', e => { if(e.key==='Enter') runSearch(); });
+document.getElementById('proxyInput').addEventListener('keydown', e => { if(e.key==='Enter') addProxy(); });
+
+function removeKeyword(kw) { keywords = keywords.filter(k=>k!==kw); renderTags(); }
+
+function renderTags() {
+  const c = document.getElementById('tagContainer');
+  if (!keywords.length) { c.innerHTML='<div style="color:var(--muted);font-size:11px;align-self:center">No keywords added yet...</div>'; return; }
+  c.innerHTML = keywords.map(kw =>
+    `<div class="tag">${kw}<button class="tag-remove" onclick="removeKeyword('${kw}')">×</button></div>`
+  ).join('');
+}
+
+function setFormat(btn) {
+  document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  format = btn.dataset.val;
+}
+
+// ─── PROXY MANAGEMENT ─────────────────────────────────────────────
+function addProxy() {
+  const addr = document.getElementById('proxyInput').value.trim();
+  const type = document.getElementById('proxyType').value;
+  const label = document.getElementById('proxyLabel').value.trim();
+  if (!addr) return;
+  // Validate basic format
+  if (!addr.includes(':')) { log('Invalid proxy format. Use IP:Port', 'log-err'); return; }
+  const proxy = {
+    id: Date.now(),
+    addr,
+    type,
+    label: label || addr,
+    status: 'unknown', // unknown, ok, warn, off
+    ping: null,
+    uses: 0
+  };
+  proxies.push(proxy);
+  document.getElementById('proxyInput').value = '';
+  document.getElementById('proxyLabel').value = '';
+  renderProxyList();
+  updateStats();
+  log(`Proxy added: ${type} ${addr}`, 'log-ok');
+}
+
+function addSampleProxies() {
+  const samples = [
+    { addr:'185.199.108.155:8080', type:'HTTP', label:'US East Node' },
+    { addr:'103.149.162.195:80',   type:'HTTP', label:'EU Relay' },
+    { addr:'47.88.11.3:3128',      type:'HTTPS', label:'Asia Gateway' },
+    { addr:'192.241.134.22:1080',  type:'SOCKS5', label:'SOCKS Node A' },
+    { addr:'91.108.4.136:1080',    type:'SOCKS5', label:'SOCKS Node B' },
+  ];
+  samples.forEach(s => {
+    if (!proxies.find(p=>p.addr===s.addr)) {
+      proxies.push({ id:Date.now()+Math.random(), addr:s.addr, type:s.type, label:s.label, status:'unknown', ping:null, uses:0 });
+    }
+  });
+  renderProxyList();
+  updateStats();
+  log('Sample proxy pool loaded.', 'log-ok');
+  // Run fake test
+  setTimeout(() => testAllProxies(), 300);
+}
+
+function removeProxy(id) {
+  const idx = proxies.findIndex(p=>p.id===id);
+  if (activeProxyIndex === idx) { setActiveProxy(-1); }
+  else if (activeProxyIndex > idx) { activeProxyIndex--; }
+  proxies = proxies.filter(p=>p.id!==id);
+  renderProxyList();
+  updateStats();
+}
+
+function selectProxy(idx) {
+  setActiveProxy(idx);
+}
+
+function setActiveProxy(idx) {
+  activeProxyIndex = idx;
+  useProxy = idx >= 0;
+
+  const display = document.getElementById('activeIp');
+  const meta    = document.getElementById('activeMeta');
+  const badge   = document.getElementById('activeBadge');
+  const dot     = document.getElementById('headerDot');
+  const status  = document.getElementById('headerStatusText');
+
+  if (idx < 0 || !proxies[idx]) {
+    display.textContent = 'No proxy selected';
+    meta.textContent    = 'Direct connection in use';
+    badge.textContent   = 'OFF';
+    badge.className     = 'pad-badge badge-off';
+    dot.className       = 'dot green';
+    status.textContent  = 'DIRECT';
+  } else {
+    const p = proxies[idx];
+    display.textContent = `${p.type} — ${p.addr}`;
+    meta.textContent    = p.label + (p.ping ? `  •  ${p.ping}ms ping` : '');
+    badge.textContent   = 'ACTIVE';
+    badge.className     = 'pad-badge badge-active';
+    dot.className       = 'dot orange';
+    status.textContent  = `PROXY: ${p.addr}`;
+  }
+  renderProxyList();
+}
+
+function renderProxyList() {
+  const list = document.getElementById('proxyList');
+  if (!proxies.length) {
+    list.innerHTML = '<div style="text-align:center;padding:18px;color:var(--muted);font-size:11px">No proxies added yet</div>';
+    return;
+  }
+  list.innerHTML = proxies.map((p, i) => {
+    const statusClass = p.status==='ok' ? 'ps-ok' : p.status==='warn' ? 'ps-warn' : 'ps-off';
+    const isSelected = i === activeProxyIndex;
+    const pingStr = p.ping ? `${p.ping}ms` : '—';
+    return `
+      <div class="proxy-item ${isSelected?'selected':''}" onclick="selectProxy(${i})">
+        <div class="proxy-status ${statusClass}"></div>
+        <div style="flex:1;min-width:0">
+          <div class="proxy-addr">${p.addr}</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">${p.type} • ${p.label} • used ${p.uses}×</div>
+        </div>
+        <div class="proxy-ping">${pingStr}</div>
+        <button class="proxy-del" onclick="event.stopPropagation();removeProxy(${p.id})">×</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function testAllProxies() {
+  if (!proxies.length) { log('No proxies to test.', 'log-warn'); return; }
+  log('Testing all proxies...', 'log-warn');
+  proxies.forEach((p, i) => {
+    setTimeout(() => {
+      // Simulate latency test (real proxy testing requires server-side)
+      const rand = Math.random();
+      if (rand > 0.15) {
+        p.status = 'ok';
+        p.ping   = Math.floor(50 + Math.random() * 350);
+      } else {
+        p.status = 'warn';
+        p.ping   = null;
+      }
+      renderProxyList();
+      updateStats();
+      if (i === proxies.length-1) log('Proxy test complete.', 'log-ok');
+    }, 200 + i * 300);
+  });
+}
+
+function clearProxies() {
+  proxies = [];
+  activeProxyIndex = -1;
+  useProxy = false;
+  setActiveProxy(-1);
+  renderProxyList();
+  updateStats();
+  log('Proxy pool cleared.', 'log-warn');
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = proxies.length;
+  document.getElementById('statActive').textContent = proxies.filter(p=>p.status==='ok').length;
+  document.getElementById('statRotations').textContent = rotationCount;
+}
+
+// ─── AUTO ROTATION ────────────────────────────────────────────────
+function toggleRotation() {
+  const on = document.getElementById('rotateToggle').checked;
+  if (on) startRotation();
+  else    stopRotation();
+}
+
+function startRotation() {
+  if (!proxies.length) { log('Add proxies before enabling rotation.', 'log-err'); document.getElementById('rotateToggle').checked=false; return; }
+  log(`Auto-rotation enabled (${rotationInterval}s interval).`, 'log-ok');
+  document.getElementById('timerRingWrap').style.display = 'flex';
+  scheduleRotation();
+}
+
+function stopRotation() {
+  clearTimeout(rotationTimer);
+  clearInterval(countdownTimer);
+  document.getElementById('timerRingWrap').style.display = 'none';
+  log('Auto-rotation disabled.', 'log-warn');
+}
+
+function scheduleRotation() {
+  nextRotCountdown = rotationInterval;
+  updateRing();
+  clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    nextRotCountdown--;
+    updateRing();
+    if (nextRotCountdown <= 0) {
+      clearInterval(countdownTimer);
+      rotateProxy();
+      scheduleRotation();
+    }
+  }, 1000);
+}
+
+function updateRing() {
+  const pct = ((rotationInterval - nextRotCountdown) / rotationInterval) * 100;
+  const offset = 100 - pct;
+  document.getElementById('ringFill').style.strokeDashoffset = offset;
+  document.getElementById('ringLabel').textContent = nextRotCountdown;
+  document.getElementById('nextRotSec').textContent = nextRotCountdown;
+}
+
+function rotateProxy() {
+  if (!proxies.length) return;
+  const mode = document.getElementById('rotMode').value;
+  let nextIdx;
+  const okProxies = proxies.map((p,i)=>({p,i})).filter(x=>x.p.status==='ok'||x.p.status==='unknown');
+  if (!okProxies.length) { log('No available proxies for rotation.', 'log-err'); return; }
+
+  if (mode === 'random') {
+    nextIdx = okProxies[Math.floor(Math.random()*okProxies.length)].i;
+  } else if (mode === 'leastused') {
+    nextIdx = okProxies.sort((a,b)=>a.p.uses-b.p.uses)[0].i;
+  } else { // sequential
+    const cur = activeProxyIndex < 0 ? -1 : activeProxyIndex;
+    const nextFiltered = okProxies.find(x=>x.i>cur) || okProxies[0];
+    nextIdx = nextFiltered.i;
+  }
+  rotationCount++;
+  proxies[nextIdx].uses++;
+  setActiveProxy(nextIdx);
+  updateStats();
+  log(`Rotated → ${proxies[nextIdx].type} ${proxies[nextIdx].addr}`, 'log-warn');
+}
+
+function updateInterval(val) {
+  rotationInterval = parseInt(val);
+  document.getElementById('intervalVal').textContent = val + 's';
+}
+
+function updateDelay(val) {
+  requestDelay = parseInt(val);
+  document.getElementById('delayVal').textContent = val + 'ms';
+}
+
+// ─── SCRAPER ──────────────────────────────────────────────────────
+function log(msg, type='') {
+  const area = document.getElementById('logArea');
+  area.classList.add('visible');
+  const now = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">[${now}]</span><span class="log-msg ${type}">${msg}</span>`;
+  area.appendChild(line);
+  area.scrollTop = area.scrollHeight;
+}
+
+function setProgress(pct) {
+  const bar = document.getElementById('progressBar');
+  const fill = document.getElementById('progressFill');
+  bar.classList.toggle('active', pct>0);
+  fill.style.width = pct+'%';
+}
+
+async function runSearch() {
+  const query = document.getElementById('queryInput').value.trim();
+  if (!query) { document.getElementById('queryInput').focus(); return; }
+
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true;
+  btn.textContent = '⟳ Searching...';
+  document.getElementById('logArea').innerHTML='';
+  document.getElementById('logArea').classList.remove('visible');
+  document.getElementById('resultsSection').style.display='none';
+  document.getElementById('emptyState').style.display='none';
+  scraperResults = [];
+
+  setProgress(10);
+
+  // Apply request delay (rate-limiting simulation)
+  if (requestDelay > 0) {
+    log(`Applying ${requestDelay}ms request delay (rate limit protection)...`, 'log-warn');
+    await new Promise(r => setTimeout(r, requestDelay));
+  }
+
+  const currentProxy = (useProxy && activeProxyIndex >= 0) ? proxies[activeProxyIndex] : null;
+  if (currentProxy) {
+    log(`Routing via ${currentProxy.type} proxy: ${currentProxy.addr}`, 'log-warn');
+    currentProxy.uses++;
+    renderProxyList();
+  } else {
+    log('Using direct connection (no proxy active).', '');
+  }
+
+  setProgress(30);
+  log('Initiating search query...');
+
+  const mode   = document.getElementById('searchMode').value;
+  const count  = document.getElementById('resultCount').value;
+  const kwPart = keywords.length > 0
+    ? `Keywords to filter (${mode} logic): ${keywords.join(', ')}. Focus on results containing ${mode==='AND'?'ALL':'AT LEAST ONE'} of these keywords.`
+    : 'No keyword filters.';
+  const formatInstr = {
+    summary:  'For each result, a short 1-2 sentence summary.',
+    detailed: 'For each result, a thorough 3-4 sentence description.',
+    bullets:  'For each result, 3 key bullet-point facts as a single string.'
+  }[format];
+
+  const systemPrompt = `You are a web scraper. Search the web and return structured JSON only.
+Return ONLY valid JSON. No markdown fences, no commentary.
+Format: {"results":[{"title":"...","url":"...","snippet":"...","keywords_found":[...],"relevance":"high|medium|low"}],"summary":"..."}
+${formatInstr}
+keywords_found: list which of the user's keywords appear in each result.`;
+
+  const userPrompt = `Search query: "${query}"
+${kwPart}
+Return exactly ${count} results. Each result must include a real URL.${currentProxy ? `\n[Note: Request routed via ${currentProxy.type} proxy at ${currentProxy.addr}]` : ''}`;
+
+  setProgress(50);
+  log('Sending request to search API...');
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:4000,
+        system: systemPrompt,
+        messages:[{role:'user', content: userPrompt}],
+        tools:[{type:'web_search_20250305', name:'web_search'}]
+      })
+    });
+
+    setProgress(75);
+    log('Receiving response...');
+    const data = await resp.json();
+
+    const fullText = (data.content||[]).map(b=>b.type==='text'?b.text:'').join('\n');
+    setProgress(90);
+    log('Parsing data structure...', 'log-ok');
+
+    let parsed;
+    try {
+      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON');
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch {
+      parsed = { results:[], summary: fullText.slice(0,200) };
+    }
+
+    scraperResults = parsed.results||[];
+    setProgress(100);
+    log(`Retrieved ${scraperResults.length} results.`, 'log-ok');
+    if (currentProxy) log(`Proxy ${currentProxy.addr} — request successful.`, 'log-ok');
+    renderResults(parsed, currentProxy);
+
+  } catch (err) {
+    log('Search error: ' + err.message, 'log-err');
+    document.getElementById('emptyState').style.display='block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⌕ Search';
+    setTimeout(() => setProgress(0), 600);
+  }
+}
+
+function highlightKeywords(text) {
+  if (!keywords.length||!text) return text||'';
+  let out = text;
+  keywords.forEach(kw => {
+    const re = new RegExp(`(${kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+    out = out.replace(re, '<span class="highlight">$1</span>');
+  });
+  return out;
+}
+
+function renderResults(data, usedProxy) {
+  const section = document.getElementById('resultsSection');
+  const grid    = document.getElementById('resultsGrid');
+  const count   = document.getElementById('resultsCount');
+
+  if (!scraperResults.length) { document.getElementById('emptyState').style.display='block'; return; }
+
+  section.style.display='block';
+  count.innerHTML = `Found <span>${scraperResults.length}</span> results`;
+
+  grid.innerHTML = scraperResults.map((r,i) => {
+    const delay = i*60;
+    const kwBadges = (r.keywords_found||[]).map(k=>`<span class="meta-badge"># ${k}</span>`).join('');
+    const relBadge = r.relevance ? `<span class="meta-badge" style="border-color:rgba(255,107,53,.3);color:var(--accent2)">${r.relevance}</span>` : '';
+    const proxyBadge = usedProxy ? `<span class="meta-badge proxy-badge">via ${usedProxy.type}</span>` : '';
+    return `
+      <div class="result-card" style="animation-delay:${delay}ms">
+        <div class="card-title">${highlightKeywords(r.title||'Untitled')}</div>
+        <div class="card-url">${r.url||''}</div>
+        <div class="card-snippet">${highlightKeywords(r.snippet||'')}</div>
+        <div class="card-meta">${kwBadges}${relBadge}${proxyBadge}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function exportResults() {
+  if (!scraperResults.length) return;
+  const activeProxy = activeProxyIndex >= 0 ? proxies[activeProxyIndex] : null;
+  const blob = new Blob([JSON.stringify({
+    query: document.getElementById('queryInput').value,
+    keywords,
+    proxy: activeProxy ? { addr:activeProxy.addr, type:activeProxy.type } : null,
+    results: scraperResults
+  }, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dataminer_results.json';
+  a.click();
+}
+</script>
+</body>
+</html>
